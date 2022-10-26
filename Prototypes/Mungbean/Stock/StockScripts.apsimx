@@ -1,6 +1,6 @@
 {
   "$type": "Models.Core.Simulations, Models",
-  "ExplorerWidth": 300,
+  "ExplorerWidth": 285,
   "Version": 156,
   "Name": "Simulations",
   "ResourceName": null,
@@ -600,12 +600,12 @@
               "$type": "Models.Report, Models",
               "VariableNames": [
                 "[Clock].Today",
-                "[TargetRotationLength].Script.CurrentLocationNum as CurrentLocNum",
+                "//[TargetRotationLength].Script.CurrentLocationNum as CurrentLocNum",
                 "[Stock].PastIntakeAll.Weight as IntakePast",
                 "[Stock].SuppIntakeAll.Weight as IntakeSupp",
                 "[Stock].IntakeAll.Weight as IntakePastSupp",
                 "//[Stock].Paddock as StockInPaddockName",
-                "[TargetRotationLength].Script.CurrentLocationNum as StockInPaddockNum",
+                "//[TargetRotationLength].Script.CurrentLocationNum as StockInPaddockNum",
                 "[Stock].NumberAll",
                 "[Stock].BaseWtAll",
                 "[Stock].CondScoreAll",
@@ -613,7 +613,8 @@
                 "//([Paddock00].AGPRyegrass.HerbageGrowthWt + [Paddock00].AGPWhiteClover.HerbageGrowthWt) * [Paddock00].Area + ([Paddock01].AGPRyegrass.HerbageGrowthWt + [Paddock01].AGPWhiteClover.HerbageGrowthWt) * [Paddock01].Area + ([Paddock02].AGPRyegrass.HerbageGrowthWt + [Paddock02].AGPWhiteClover.HerbageGrowthWt) * [Paddock02].Area as TotalGrowth",
                 "[Supplement].Stores[2].Stored",
                 "[Stock].Paddock",
-                "[TargetRotationLength].Script.SilageHarvested as SilageHarvested"
+                "//[TargetRotationLength].Script.SilageHarvested as SilageHarvested",
+                "[Sell].Script.numberSellableAnimals"
               ],
               "EventNames": [
                 "[Clock].EndOfDay"
@@ -4704,6 +4705,116 @@
                   "ReadOnly": false
                 }
               ],
+              "Enabled": true,
+              "ReadOnly": false
+            },
+            {
+              "$type": "Models.Manager, Models",
+              "Code": "using Models.PMF.Interfaces;\nusing System.Diagnostics;\nusing Models.AgPasture;\nusing System.Linq;\nusing System.Collections.Generic;\nusing System.Collections;\nusing Models.Soils;\nusing Models.PMF;\nusing System.Xml.Serialization;\nusing APSIM.Shared.Utilities;\nusing Models.GrazPlan;\nusing Models.Utilities;\nusing Models.Functions;\nusing Models.Core;\nusing Models;\nusing System;\n\nnamespace Models\n{\n\n    [Serializable]\n    public class Script : Model\n    {\n        [Link] Clock clock;\n        [Link] Stock stock;\n        [Link] Supplement supplement;\n        [Link] List<Zone> paddocks;\n        [Link] ISummary summary;\n        [Link] Simulation farm;\n        [Link] List<IPlantDamage> forages = null;\n\n        private int CurrentGroupNum = 1;    // animal group number\n        private int CurrentLocationNum { get; set; }\n   \t  private IBooleanFunction expressionFunction;\n     \n             public enum BuyPolicyType\n        {\n            Date,\n            Other\n        }\n        \n                public enum StockEnterprise\n        {\n            /// <summary>\n            /// Wether\n            /// </summary>\n            entWether,\n            /// <summary>\n            /// Ewes and wethers\n            /// </summary>\n            entEweWether,\n            /// <summary>\n            /// Steers\n            /// </summary>\n            entSteer,\n            /// <summary>\n            /// Beef cow breeding\n            /// </summary>\n            entBeefCow,\n            /// <summary>\n            /// Trading lambs\n            /// </summary>\n            entLamb\n        }\n\n\n        [Description(\"Buy animals?\")]\n        public bool Buying { get; set; }\n        \n        [Description(\"Enterprise\")] \n        [Display(EnabledCallback = \"BuyingEnabled\")]\n        public StockEnterprise Enterprise { get; set; }\n        \n //       [Description (\"Animal Type\")]\n  //      public AnimalType Type {get; set;} \n        \n           [Description(\"Stock: genotype (e.g. Small Merino, Angus, Friesian):\")] \n        [Display(Values=\"GetGenotypes\")]\n        public string Genotype { get; set; } \n  \n        [Description(\"Whole-farm stocking rate (head/ha): \")] \n        public double StockingRate { get; set; } \n        \n        [Description(\"Condition Score\")]\n        public double CondScore {get; set; }\n        \n        [Description(\"Stock: sex (Female, Male, Castrate):\")] \n        public ReproductiveType Sex { get; set; }\n        \n        [Description(\"Stock: fertility status (0 if non-pregnant or days since conception):\")] \n        public int Pregnant { get; set; }\n\n        [Description(\"Stock: lactation status (0 if non-lactating or days since parturition):\")]\n        public int Lactating { get; set; }\n        \n        [Description(\"Stock: age (months):\")] \n        public double Age { get; set; }\n\n        [Description(\"Stock: weight (kg liveweight /head):\")] \n        public double Weight { get; set; }\n        \n        [Description(\"Number of animals to buy: \")] \n        public int NumStock { get; set; }\n        \n        [Description(\"Buying policy \")] \n        [Display(EnabledCallback = \"BuyingEnabled\")]\n        public BuyPolicyType BuyPolicy { get; set; }\n   \n          public bool BuyingEnabled { get { return Buying; } }\n          \n           public bool BuyingOtherEnabled\n        { \n            get\n            { \n                return Buying &&\n                (BuyPolicy == BuyPolicyType.Other);\n            } \n        }\n        \n        public bool BuyingDateEnabled\n        {\n        \tget\n        \t{\n        \t\treturn Buying &&\n        \t\t(BuyPolicy==BuyPolicyType.Date);\n        \t}\n        }\n             \n        [Separator(\"Buy on a date\")]\n        [Description(\"Date to buy animals (dd-mmm)\")] \n               [Display(EnabledCallback = \"BuyingDateEnabled\")]\n        public string BuyDate { get; set; }\n        \n        \n        \n        [Separator(\"Settings for flexible buying\")]\n        [Description(\"Expression for flexible buying criteria (e.g. AGPRyegrass.CoverTotal > 0.95)\")]\n       [Display(EnabledCallback = \"BuyingOtherEnabled\")]\n        public string FlexibleExpressionForBuying { get; set; }\n\n\n   //    public string[] GetAnimals()\n     //   {\n \t   // \tif (stock!= null)\n        //\t\treturn GrazType.AnimalType\n       //\treturn null;\n        //}\n\n        // Return a list of genotypes to the properties tab. filter by animal type\n        public string[] GetGenotypes()\n        {\n            if (stock != null)\n                return stock.Genotypes.Names.ToArray();\n            return null;\n        }\n        \n\n\t\t\n        [EventSubscribe(\"DoManagement\")]\n        private void OnDoManagement(object sender, EventArgs e)\n        {\n\n\t\t\tif (DateUtilities.WithinDates(BuyDate, clock.Today, BuyDate))\n        {\n\n            //Debugger.Break();\n\n            summary.WriteMessage(this, \"Initialising the paddock information\", MessageType.Diagnostic);\n\n            NumStock = (int)(Math.Round(StockingRate * farm.Area, 0));\n\n            BuyStock();\n            summary.WriteMessage(this, \"     Number of stock bought is \" + NumStock, MessageType.Diagnostic);\n            summary.WriteMessage(this, \"     The number of animals has been rounded to \" + NumStock + \" from \" + (StockingRate * farm.Area), MessageType.Diagnostic);\n            summary.WriteMessage(this, \"     The area of the whole farm is \" + farm.Area + \" ha\", MessageType.Diagnostic);\n\n        }\n        }\n\n        public void BuyStock()\n        {\n            CurrentGroupNum = stock.NoGroups + 1;\n            StockBuy purchase = new StockBuy();\n            purchase.Genotype = Genotype;\n            purchase.Number = NumStock;\n            purchase.Sex = Sex;\n            purchase.Age = Age;       // age in months\n            purchase.Weight = Weight;  // live weight in kg\n            purchase.UseTag = CurrentGroupNum + 1;\n            purchase.MatedTo = purchase.Genotype;\n            purchase.Pregnant = Pregnant;  // days pregnant, 0 = non pregnant, 1 = pregnant\n            purchase.Lactating = Lactating;  // 0 for dry, 1 for lactating\n\n            stock.Buy(purchase);\n        }\n\n\n    }\n}\n\n",
+              "Parameters": [
+                {
+                  "Key": "Buying",
+                  "Value": "True"
+                },
+                {
+                  "Key": "Enterprise",
+                  "Value": "entWether"
+                },
+                {
+                  "Key": "Genotype",
+                  "Value": "Angus"
+                },
+                {
+                  "Key": "StockingRate",
+                  "Value": "5"
+                },
+                {
+                  "Key": "CondScore",
+                  "Value": "0"
+                },
+                {
+                  "Key": "Sex",
+                  "Value": "Female"
+                },
+                {
+                  "Key": "Pregnant",
+                  "Value": "0"
+                },
+                {
+                  "Key": "Lactating",
+                  "Value": "0"
+                },
+                {
+                  "Key": "Age",
+                  "Value": "12"
+                },
+                {
+                  "Key": "Weight",
+                  "Value": "100"
+                },
+                {
+                  "Key": "NumStock",
+                  "Value": "0"
+                },
+                {
+                  "Key": "BuyPolicy",
+                  "Value": "Date"
+                },
+                {
+                  "Key": "BuyDate",
+                  "Value": "01-Aug"
+                },
+                {
+                  "Key": "FlexibleExpressionForBuying",
+                  "Value": ""
+                }
+              ],
+              "Name": "Buy",
+              "ResourceName": null,
+              "Children": [],
+              "Enabled": true,
+              "ReadOnly": false
+            },
+            {
+              "$type": "Models.Manager, Models",
+              "Code": "/*-------------------------------------------------------------------------------------\nSheep grazing wheat when conditions are suitable, and in feedlot the rest of the time.\n---------------------------------------------------------------------------------------\n\nIn this script animals are bought and sold within a specified date window.\nThey are fed supplement in a feedlot at a set rate, but graze a wheat crop when a criteria is met.\nAnimals are moved from the wheat crop and back to feedlot when a second criteria is met.\n\nBased on Sprague SJ, Kirkegaard JA, Dove H, Graham JM, McDonald SE, Kelman WM (2015) Integrating dual-purpose wheat and canola into high-rainfall livestock systems in south-eastern Australia. 1. Crop forage and grain yield. Crop and Pasture Science 66(4), 365-376. \n\nActivities in this manager:\n1. Buy animals at start of year & put in feedlot\n2. Move animals from feedlot to crop when ready to graze\n3. Move animals from crop to feedlot \n4. Shear all animals on specified date\n5. Sell all animals at end of year\n\nNOTES\n1. When the animals are in the feedlot and an animal dies during the day, the supplement has already been fed into the feedlot\n   based on the number of animals in the feedlot at the start of the day. This means the remaining animals have access to slightly\n   more supplement and causes a spike in supp intake graph\n2. When sheep are culled for age + purchased to maintain stocking rate, several groups of sheep are created.\n   This causes irregular amounts of supplement to be fed.\n--------------------------------------------------------------------------------------*/\n\n\nusing System.Linq;\nusing System;\nusing System.Collections.Generic;\nusing Models.Core;\nusing Models.PMF;\nusing Models.Functions;\nusing Models.Soils;\nusing Models.Utilities;\nusing Models.GrazPlan;\nusing APSIM.Shared.Utilities;\nusing System.Diagnostics;\n\nnamespace Models\n{\n    [Serializable]\n    [Description(\n        \"<p><b>Animals grazing a crop when conditions are suitable, and in feedlot the rest of the time.</b></p>\" +\n        \"In this script animals are bought and sold within a specified date window. \" +\n        \"They are fed supplement in a feedlot at a set rate, but graze a wheat crop when a criteria is met. \" +\n        \"Animals are moved from the wheat crop and back to feedlot when a second criteria is met.\")]    \n    public class Script : Model\n    {\n        [Link] Clock clock;\n        [Link] Stock Animals;\n        [Link] Supplement Feed;\n        [Link] Summary Summary;\n        [Link] IPlant plant;\n        [Link] Soil Soil;\n        [Link] Zone Paddock;\n        [Link] ScriptCompiler compiler;\n\n        private IBooleanFunction expressionFunction;\n\n        public enum SellPolicyType\n        {\n            Date,\n            CulledForAge,\n            CulledForWeight,\n            SellYoung,\n            Other\n        }\n\n  \n        ////////////////////////////////////////////////////////\n        [Separator(\"Selling of animals\")]\n\n        [Description(\"Selling animals?\")] \n        public bool Selling { get; set; }\n\n        [Description(\"First date to consider selling animals (dd-mmm)\")] \n        public string SaleFirstDate { get; set; }\n\n        [Description(\"Last date to consider selling animals (dd-mmm)\")] \n        public string SaleLastDate { get; set; }\n\n        [Description(\"Selling policy \")] \n        [Display(EnabledCallback = \"SellingEnabled\")]\n        public SellPolicyType SellPolicy { get; set; }\n \n        [Description(\"Percentage of animals to sell (%)\")] \n        [Display(EnabledCallback = \"SellingEnabled\")]\n        public double SalePercentAnimals { get; set; }\n\n        [Description(\"Age at which to sell (months): \")] \n        [Display(EnabledCallback = \"SellingAgeEnabled\")]\n        public int SaleAge { get; set; }\n\n        [Description(\"Weight at which to sell (kg): \")] \n        [Display(EnabledCallback = \"SellingWeightEnabled\")]\n        public double SaleWeight { get; set; }\n\n       [Separator(\"Settings for flexible selling\")]\n        [Description(\"Expression for flexible selling criteria (e.g. AGPRyegrass.CoverTotal > 0.95)\")]\n        [Display(EnabledCallback = \"SellingOtherEnabled\")]\n        public string FlexibleExpressionForBuying { get; set; }\n\n\n        ////////////////////////////////////////////////////////////////////////////\n        // Callback properties to control disabling of properties.\n        ////////////////////////////////////////////////////////////////////////////\n\n        public bool SellingEnabled { get { return Selling; } }\n        \n\n        public bool SellingAgeEnabled\n        { \n            get\n            { \n                return Selling &&\n                (SellPolicy == SellPolicyType.CulledForAge);\n            } \n        }\n\n        public bool SellingWeightEnabled\n        { \n            get\n            { \n                return Selling &&\n                (SellPolicy == SellPolicyType.CulledForWeight);\n            } \n        }\n        \n        \n        \n        public bool SellingOtherEnabled\n        { \n            get\n            { \n                return Selling &&\n                (SellPolicy == SellPolicyType.Other);\n            } \n        }\n        \n\n        ////////////////////////////////////////////////////////////////////////////\n        // Outputs\n        ////////////////////////////////////////////////////////////////////////////\n        // <summary>Number of animals sold.</summary>\n        public int numberSellableAnimals { get; set; }\n\n        // <summary>Description of something that has happened.</summary>\n        public string EventName { get; set; }\n\n        // <summary>Return a list of genotypes to the properties tab.</summary>\n        public string[] GetGenotypes()\n        {\n            if (Animals != null)\n                return Animals.Genotypes.Names.ToArray();\n            return null;\n        }\n\n        public string CurrentLocation { get; set; }  // location of the sheep\n        \n        private IEnumerable<AnimalGroup> AnimalsToSell {get; set;}\n  \n\n\n\n        // ============================================================\n        // Management that happens every day.\n        // ============================================================\n        [EventSubscribe(\"DoManagement\")]\n        private void OnDoManagement(object sender, EventArgs e)\n        {\n            EventName = string.Empty;\n\n            // Sell animals\n            // Sell animals\n            if (SellingEnabled && DateUtilities.WithinDates(SaleFirstDate, clock.Today, SaleLastDate))\n                       {\n \n            \n      \n              {\n                    IEnumerable<AnimalGroup> AnimalsToSell = null;                  \n                    if (SellPolicy == SellPolicyType.CulledForAge)\n                      {  // split older animals into a new group\n                        AnimalsToSell = Animals.SplitByAge(Convert.ToInt32(SaleAge * 30)); // months to days                       \n                        }\n                    else if (SellPolicy == SellPolicyType.CulledForWeight)\n                    {   // split heavier animals into a new group\n                        Summary.WriteMessage(this, \"Av Weight: \" + Animals.WeightAll.ToString() ,  MessageType.Information);\n                                    // Sell target weight animals\n           \t\t\t\t splitAll.Type = \"weight\";\n           \t\t\t\t splitAll.Value = SaleWeight;\n          \t\t\t\t  Animals.Split(WeightAll);\n            if (Animals.NoGroups > groups)\n            {\n                for (int g = 1; g <= groups; g++)\n                {\n                    count += Animals.Number[g - 1];\n                }\n            }\n                        \n                        \n                        \n                        \n                        \n                        \n                     //   AnimalsToSell = Animals.SplitByWeight(SaleWeight);  \n                        \n                        foreach (AnimalGroup grp in  AnimalsToSell)\n                        {\n                            Summary.WriteMessage(this, \"Split by weight - Group numbers: \" + grp.NoAnimals.ToString() + \" Weight: \" + grp.BaseWeight.ToString(),  MessageType.Information);\n                        }\n                    }\n                                            \n                        \n                    else if (SellPolicy == SellPolicyType.SellYoung)\n                        {// split young (offspring) into new groups\n                        AnimalsToSell = Animals.SplitByYoung();\n                        }\n                        \n                        \n              if (AnimalsToSell != null)\n                    {\n                    foreach (AnimalGroup grp in  AnimalsToSell)\n                       {\n                            Summary.WriteMessage(this, \"Group numbers: \" + grp.NoAnimals.ToString() + \" Weight: \" + grp.BaseWeight.ToString(),  MessageType.Information);\n                            Animals.Sell(grp.NoAnimals , grp);            \n                                        \n                                        \n                       /* var numberSellableAnimals = AnimalsToSell.Sum(g => g.NoAnimals);\n                        var numberAnimalsToSell = Convert.ToInt32(numberSellableAnimals);\n                        if (numberAnimalsToSell > 0)\n                            Animals.Sell(numberAnimalsToSell);\n                            EventName = numberSellableAnimals + \" animals sold\";\n                            Summary.WriteMessage(this,\"Animals Sold!\",MessageType.Information);\n                            */\n                       }\n                    }\n                    }\n\n\n                    }                                 \n                }\n                }\n                }\n                \n",
+              "Parameters": [
+                {
+                  "Key": "Selling",
+                  "Value": "True"
+                },
+                {
+                  "Key": "SaleFirstDate",
+                  "Value": "01-mar"
+                },
+                {
+                  "Key": "SaleLastDate",
+                  "Value": "01-apr"
+                },
+                {
+                  "Key": "SellPolicy",
+                  "Value": "CulledForWeight"
+                },
+                {
+                  "Key": "SalePercentAnimals",
+                  "Value": "100"
+                },
+                {
+                  "Key": "SaleAge",
+                  "Value": "5"
+                },
+                {
+                  "Key": "SaleWeight",
+                  "Value": "50"
+                },
+                {
+                  "Key": "FlexibleExpressionForBuying",
+                  "Value": ""
+                }
+              ],
+              "Name": "Sell",
+              "ResourceName": null,
+              "Children": [],
               "Enabled": true,
               "ReadOnly": false
             }
