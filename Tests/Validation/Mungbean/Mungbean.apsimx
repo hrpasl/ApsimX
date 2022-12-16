@@ -277,7 +277,9 @@
             "[Mungbean].Phenology.EndGrainFillDAS",
             "[Mungbean].Phenology.MaturityDAS",
             "[Mungbean].Leaf.NodeNumber",
-            "[Mungbean].Leaf.Area"
+            "[Mungbean].Leaf.Area",
+            "",
+            "Sum of [Weather].Rain from [Mungbean].Sowing to [Mungbean].Harvesting as CumRain"
           ],
           "EventNames": [
             "[Mungbean].Harvesting"
@@ -54815,8 +54817,8 @@
                   "Type": 1,
                   "XAxis": 3,
                   "YAxis": 0,
-                  "ColourArgb": -16776961,
-                  "FactorToVaryColours": "Experiment",
+                  "ColourArgb": -16747854,
+                  "FactorToVaryColours": null,
                   "FactorToVaryMarkers": null,
                   "FactorToVaryLines": null,
                   "Marker": 0,
