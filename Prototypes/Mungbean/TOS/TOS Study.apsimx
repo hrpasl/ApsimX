@@ -23,17 +23,18 @@
             "[Mungbean].SowingDate",
             "",
             "sum of ([Weather].Rain) from [Mungbean].Sowing to [Mungbean].Harvesting as Season_Rainfall",
-            "Season_Rainfall/Season_WaterOutput as Season_Aridity ",
+            "sum of ([Soil].SoilWater.Es+[Leaf].Transpiration) from [Mungbean].Sowing to [Mungbean].Harvesting as Season_ET",
+            "Season_Rainfall/Season_ET as Season_Aridity ",
             "mean of [Weather].MaxT from [Mungbean].Sowing to [Mungbean].Harvesting as Season_MaxT",
             "mean of [Weather].MinT from [Mungbean].Sowing to [Mungbean].Harvesting as Season_MinT",
             "mean of [Weather].Radn from [Mungbean].Sowing to [Mungbean].Harvesting as Season_Radn",
             "mean of [Weather].VPD from [Mungbean].Sowing to [Mungbean].Harvesting as Season_VPD",
             "",
-            "sum of ([Soil].SoilWater.Eo) from [Mungbean].Sowing to [Mungbean].Harvesting as Season_WaterOutput",
+            "",
             "",
             "",
             "sum of ([Weather].Rain) from [Mungbean].Sowing to [Mungbean].Flowering as Veg_Rainfall",
-            "sum of ([Soil].SoilWater.Eo from [Mungbean].Sowing to [Mungbean].Harvesting as Veg_ET",
+            "sum of ([Soil].SoilWater.Es+[Leaf].Transpiration) from [Mungbean].Sowing to [Mungbean].Harvesting as Veg_ET",
             "Veg_Rainfall/Veg_ET as Veg_Aridity",
             "mean of [Weather].MaxT from [Mungbean].Sowing to [Mungbean].Flowering as Veg_MaxT",
             "mean of [Weather].MinT from [Mungbean].Sowing to [Mungbean].Flowering as Veg_MinT",
@@ -41,7 +42,7 @@
             "mean of [Weather].VPD from [Mungbean].Sowing to [Mungbean].Flowering as Veg_VPD",
             "",
             "sum of ([Weather].Rain) from [Mungbean].Flowering to [Mungbean].Harvesting as Rep_Rainfall",
-            "sum of ([Soil].SoilWater.Eo) from [Mungbean].Flowering to [Mungbean].Harvesting as Rep_ET",
+            "sum of ([Soil].SoilWater.Es+[Leaf].Transpiration) from [Mungbean].Flowering to [Mungbean].Harvesting as Rep_ET",
             "Rep_Rainfall/Rep_ET as Rep_Aridity",
             "mean of [Weather].MaxT from [Mungbean].Flowering to [Mungbean].Harvesting as Rep_MaxT",
             "mean of [Weather].MinT from [Mungbean].Flowering to [Mungbean].Harvesting as Rep_MinT",
@@ -78,7 +79,7 @@
         {
           "$type": "Models.Report, Models",
           "VariableNames": [
-            "sum of ([Soil].SoilWater.Eo) from [Mungbean].Sowing to [Wheat].Sowing as ET",
+            "sum of ([Soil].SoilWater.Es+[Leaf].Transpiration) from [Mungbean].Sowing to [Wheat].Sowing as ET",
             "Sum([Soil].SoilWater.PAWmm[1:9]) as SoilPAW",
             "[Clock].Today"
           ],
@@ -9634,8 +9635,12 @@
                 },
                 {
                   "$type": "Models.Manager, Models",
-                  "Code": "using Models.Soils.Nutrients;\r\nusing APSIM.Shared.Utilities;\r\nusing Models.Surface;\r\nusing Models.Utilities;\r\nusing Models.Soils.Nutrients;\r\nusing Models.Soils;\r\nusing Models.PMF;\r\nusing Models.Core;\r\nusing System;\r\nusing Models.Interfaces;\r\n\r\nnamespace Models\r\n{\r\n    [Serializable]\r\n    public class Script : Model\r\n    {\r\n        [Link] private Clock Clock;\r\n        [Link] private ISoilWater SoilWater;\r\n        [Link] private Nutrient nutrient;\r\n        [Link] private SurfaceOrganicMatter SOM;\r\n        [Link] private Summary Summary;\n        [Link] public IPlant wheat;\r\n\r\n        [Description(\"Reset Water? (Yes or No)\")]\r\n        public string ResetWater {get;set;}\n        \n        [Description(\"Reset on the same day(s) each year?\")]\n        public bool EachYear { get; set; }\n\n        [Description(\"First Reset date (d-mmm)\")]\n        public string FirstResetDate { get; set; } \n        \n        [Description (\"Factorial Days After First Resetting Date\")]\n        public int numdays {get; set;}\n        \n\n       private DateTime ResetDate;\n       \n       private int StartYear;     \n  \n       public double Evaporation {get;set;} = 0;\r\n\r\n        [Description(\"Reset Soil Nutrients ? (Yes or No)\")]\r\n        public string ResetNutrients {get;set;}\r\n\r\n        [Description(\"Reset Surface Organic Matter? (Yes or No)\")]\r\n        public string ResetSOM {get;set;}\r\n\r\n        [EventSubscribe(\"DoManagement\")]\r\n        private void OnDoManagement(object sender, EventArgs e)\r\n        {\n        if (Clock.Today.Month==9)\n        \tStartYear=Clock.Today.Year;\n        \t\n            ResetDate = DateTime.Parse(FirstResetDate + \"-\" + StartYear.ToString());\n            ResetDate= ResetDate.AddDays(numdays);\r\n                if (Clock.Today==ResetDate && ResetWater == \"Yes\")\r\n                {\r\n                    Summary.WriteMessage(this, \"Reset Water\", MessageType.Diagnostic);\r\n                    SoilWater.Reset();\r\n                }\r\n                if (Clock.Today==ResetDate && ResetNutrients == \"Yes\")\r\n                {\r\n                    Summary.WriteMessage(this, \"Reset Nitrogen\", MessageType.Diagnostic);\r\n                    nutrient.Reset();\r\n                }\r\n                if (Clock.Today==ResetDate && ResetSOM == \"Yes\")\r\n                {\r\n                    Summary.WriteMessage(this, \"Reset Surface OM\", MessageType.Diagnostic);\r\n                    SOM.Reset();\r\n                }\n                \n             \tif (Clock.Today == ResetDate)\n             \t{\n             \t\tEvaporation = 0;\n             \t}\n             \t\n                if (Clock.Today>ResetDate)\n                {\n\t\t\t\t\tSummary.WriteMessage(this, \"it worked\", MessageType.Diagnostic);\n\t\t\t\t\tEvaporation += SoilWater.Eos;\n                }\r\n            }\r\n        }\r\n    }\r\n\r\n",
+                  "Code": "using Models.Soils.Nutrients;\r\nusing APSIM.Shared.Utilities;\r\nusing Models.Surface;\r\nusing Models.Utilities;\r\nusing Models.Soils.Nutrients;\r\nusing Models.Soils;\r\nusing Models.PMF;\r\nusing Models.Core;\r\nusing System;\r\nusing Models.Interfaces;\r\n\r\nnamespace Models\r\n{\r\n    [Serializable]\r\n    public class Script : Model\r\n    {\r\n        [Link] private Clock Clock;\r\n        [Link] private ISoilWater SoilWater;\r\n        [Link] private Nutrient nutrient;\r\n        [Link] private SurfaceOrganicMatter SOM;\r\n        [Link] private Summary Summary;\n        [Link] public IPlant wheat;\r\n\r\n        [Description(\"Reset Water? (Yes or No)\")]\r\n        public string ResetWater {get;set;}\n        \n        [Description(\"Reset on the same day(s) each year?\")]\n        public bool EachYear { get; set; }\n\n        [Description(\"First Reset date (d-mmm)\")]\n        public string FirstResetDate { get; set; } \n        \n        [Description (\"Factorial Days After First Resetting Date\")]\n        public int numdays {get; set;}\n        \n\n       private DateTime ResetDate;\n       \n       private int StartYear;     \n  \n       public double Evaporation {get;set;} = 0;\r\n\r\n        [Description(\"Reset Soil Nutrients ? (Yes or No)\")]\r\n        public string ResetNutrients {get;set;}\r\n\r\n        [Description(\"Reset Surface Organic Matter? (Yes or No)\")]\r\n        public string ResetSOM {get;set;}\r\n\r\n        [EventSubscribe(\"DoManagement\")]\r\n        private void OnDoManagement(object sender, EventArgs e)\r\n        {\n        if (Clock.Today.Month==9)\n        \tStartYear=Clock.Today.Year;\n        \t\n            ResetDate = DateTime.Parse(FirstResetDate + \"-\" + StartYear.ToString());\n            ResetDate= ResetDate.AddDays(numdays);\r\n                if (Clock.Today==ResetDate && ResetWater == \"Yes\")\r\n                {\r\n                    Summary.WriteMessage(this, \"Reset Water\", MessageType.Diagnostic);\r\n                    SoilWater.Reset();\r\n                }\r\n                if (Clock.Today==ResetDate && ResetNutrients == \"Yes\")\r\n                {\r\n                    Summary.WriteMessage(this, \"Reset Nitrogen\", MessageType.Diagnostic);\r\n                    nutrient.Reset();\r\n                }\r\n                if (Clock.Today==ResetDate && ResetSOM == \"Yes\")\r\n                {\r\n                    Summary.WriteMessage(this, \"Reset Surface OM\", MessageType.Diagnostic);\r\n                    SOM.Reset();\r\n                }\n                \n             \tif (Clock.Today == ResetDate)\n             \t{\n             \t\tEvaporation = 0;\n             \t}\n             \t\n                if (Clock.Today>ResetDate)\n                {\n\t\t\t\t\tEvaporation += SoilWater.Es;\n                }\r\n            }\r\n        }\r\n    }\r\n\r\n",
                   "Parameters": [
+                    {
+                      "Key": "numdays",
+                      "Value": "0"
+                    },
                     {
                       "Key": "ResetWater",
                       "Value": "Yes"
@@ -9647,10 +9652,6 @@
                     {
                       "Key": "FirstResetDate",
                       "Value": "1-Sep"
-                    },
-                    {
-                      "Key": "numdays",
-                      "Value": "0"
                     },
                     {
                       "Key": "ResetNutrients",
@@ -10173,6 +10174,101 @@
           "ShowInDocs": false,
           "GraphsPerPage": 6,
           "Name": "Folder",
+          "ResourceName": null,
+          "Children": [],
+          "Enabled": true,
+          "ReadOnly": false
+        }
+      ],
+      "Enabled": true,
+      "ReadOnly": false
+    },
+    {
+      "$type": "Models.Graph, Models",
+      "Caption": null,
+      "Axis": [
+        {
+          "$type": "APSIM.Shared.Graphing.Axis, APSIM.Shared",
+          "Title": null,
+          "Position": 3,
+          "Inverted": false,
+          "CrossesAtZero": false,
+          "Minimum": null,
+          "Maximum": null,
+          "Interval": null
+        },
+        {
+          "$type": "APSIM.Shared.Graphing.Axis, APSIM.Shared",
+          "Title": null,
+          "Position": 0,
+          "Inverted": false,
+          "CrossesAtZero": false,
+          "Minimum": null,
+          "Maximum": null,
+          "Interval": null
+        }
+      ],
+      "LegendPosition": 0,
+      "LegendOrientation": 0,
+      "AnnotationLocation": 0,
+      "DisabledSeries": [],
+      "LegendOutsideGraph": false,
+      "Name": "ET",
+      "ResourceName": null,
+      "Children": [
+        {
+          "$type": "Models.Series, Models",
+          "Type": 1,
+          "XAxis": 3,
+          "YAxis": 0,
+          "ColourArgb": -16777216,
+          "FactorToVaryColours": null,
+          "FactorToVaryMarkers": null,
+          "FactorToVaryLines": "Sow",
+          "Marker": 11,
+          "MarkerSize": 0,
+          "Line": 0,
+          "LineThickness": 0,
+          "TableName": "MungbeanWaterReport",
+          "XFieldName": "Clock.Today",
+          "YFieldName": "ET",
+          "X2FieldName": null,
+          "Y2FieldName": null,
+          "ShowInLegend": true,
+          "IncludeSeriesNameInLegend": false,
+          "Cumulative": false,
+          "CumulativeX": false,
+          "Filter": "[SimulationName] LIKE '%Gatton%'",
+          "Name": "Predicted",
+          "ResourceName": null,
+          "Children": [],
+          "Enabled": true,
+          "ReadOnly": false
+        },
+        {
+          "$type": "Models.Series, Models",
+          "Type": 1,
+          "XAxis": 3,
+          "YAxis": 0,
+          "ColourArgb": -3376729,
+          "FactorToVaryColours": null,
+          "FactorToVaryMarkers": null,
+          "FactorToVaryLines": "Sow",
+          "Marker": 11,
+          "MarkerSize": 0,
+          "Line": 0,
+          "LineThickness": 0,
+          "TableName": "FallowWaterReport",
+          "XFieldName": "Clock.Today",
+          "YFieldName": "ResetingRule.Script.Evaporation",
+          "X2FieldName": null,
+          "Y2FieldName": null,
+          "ShowInLegend": true,
+          "IncludeSeriesNameInLegend": false,
+          "Cumulative": false,
+          "CumulativeX": false,
+          "Filter": "[SimulationName] LIKE '%Gatton%'",
+          "Name": "Predicted1",
           "ResourceName": null,
           "Children": [],
           "Enabled": true,
