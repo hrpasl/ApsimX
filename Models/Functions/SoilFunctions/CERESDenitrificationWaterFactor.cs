@@ -21,6 +21,8 @@ namespace Models.Functions
         [Link]
         IPhysical physical = null;
 
+         double mediacomplexityfactor {get;set;}=2.1;
+
         /// <summary>Gets the value.</summary>
         /// <value>The value.</value>
         public double Value(int arrayIndex = -1)
@@ -29,6 +31,14 @@ namespace Models.Functions
                 throw new Exception("Layer number must be provided to CERES Denitrification Water Factor Model");
 
             double WF = MathUtilities.Divide(soilwater.SW[arrayIndex] - physical.DUL[arrayIndex], physical.SAT[arrayIndex] - physical.DUL[arrayIndex], 0.0);
+
+            double sat = physical.SAT[arrayIndex];
+            double afps = 1-soilwater.SW[arrayIndex]/sat;
+            double cm = 1+sat*mediacomplexityfactor;
+            double afpsOverSat = afps / sat;
+            double diffusivity = Math.Pow(afps,cm)*afpsOverSat;
+            WF=-38.46*diffusivity+1;
+
             return MathUtilities.Bound(WF, 0, 1);
         }
 
