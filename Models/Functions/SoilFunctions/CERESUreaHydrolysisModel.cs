@@ -20,8 +20,6 @@ namespace Models.Functions
 
         private double[] wf;
 
-        [Link]
-        Soil soil = null;
 
         [Link]
         Water water = null;
@@ -35,8 +33,7 @@ namespace Models.Functions
         [Link]
         ISoilTemperature soilTemperature = null;
 
-        [Link(Type = LinkType.Child)]
-        CERESMineralisationWaterFactor CERESWF = null;
+
 
 
         /// <summary>Gets the value.</summary>
