@@ -23,6 +23,11 @@ namespace Models.Functions
 
          double mediacomplexityfactor {get;set;}=2.1;
 
+/// <summary>
+/// 
+/// </summary>
+         public double diffusivity {get;set;}
+
         /// <summary>Gets the value.</summary>
         /// <value>The value.</value>
         public double Value(int arrayIndex = -1)
@@ -36,7 +41,7 @@ namespace Models.Functions
             double afps = 1-soilwater.SW[arrayIndex]/sat;
             double cm = 1+sat*mediacomplexityfactor;
             double afpsOverSat = afps / sat;
-            double diffusivity = Math.Pow(afps,cm)*afpsOverSat;
+            diffusivity = Math.Pow(afps,cm)*afpsOverSat;
             WF=-38.46*diffusivity+1;
 
             return MathUtilities.Bound(WF, 0, 1);
