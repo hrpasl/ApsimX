@@ -2,6 +2,7 @@
 using APSIM.Core;
 using APSIM.Numerics;
 using APSIM.Shared.Utilities;
+using JetBrains.Annotations;
 using Models.Core;
 using Models.Interfaces;
 using Models.Soils;
@@ -18,7 +19,10 @@ namespace Models.Functions
         [Link]
         Organic organic = null;
 
-        private double[] wf;
+        /// <summary>
+        /// 
+        /// </summary>
+        public double[] wf;
 
 
         [Link]
@@ -73,7 +77,7 @@ namespace Models.Functions
 
             double potentialRate = -1.12 + 1.31 * organic.Carbon[arrayIndex] + 0.203 * chemical.PH[arrayIndex] - 0.155 * organic.Carbon[arrayIndex] * chemical.PH[arrayIndex];
             potentialRate = MathUtilities.Bound(potentialRate, 0, 1);
-            double WF = MathUtilities.Bound(wf[arrayIndex], 0, 1);
+            double WF = MathUtilities.Bound(wf[arrayIndex]+0.2, 0, 1);
             double TF = MathUtilities.Bound(soilTemperature.Value[arrayIndex] / 40 + 0.2, 0, 1);
             double rateModifer = Math.Min(WF, TF);
 
