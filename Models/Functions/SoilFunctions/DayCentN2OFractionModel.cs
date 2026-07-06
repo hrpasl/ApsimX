@@ -33,30 +33,32 @@ namespace Models.Functions
         [Link]        
         CERESDenitrificationWaterFactor Gen_WF = null; 
 
+        //public double N2ODiffusionCoefficient { get; set; } = 25.1;
+ 
         /// <summary>Gas diffusivity in soil at field capacity.</summary>
         [Description("Gas diffusivity in soil at field capacity")]
-        public double[] N2ODiffusionCoefficient { get; set; }
+        public double[] N2ODiffusionCoefficientbylayer { get; set; }
 
 
         private void OnWaterChanged(object sender, EventArgs e)
         {
             double[] SW = waterBalance.SW;
             
-        if (N2ODiffusionCoefficient == null||
-            N2ODiffusionCoefficient.Length != SW.Length)
+        if (N2ODiffusionCoefficientbylayer == null||
+            N2ODiffusionCoefficientbylayer.Length != SW.Length)
             {
-                N2ODiffusionCoefficient = new double[SW.Length];
+                N2ODiffusionCoefficientbylayer = new double[SW.Length];
             }
 
             for (int i = 0; i < SW.Length; i++)
             {
                 if (Gen_WF.diffusivity[i]<0.007)
                 {
-                     N2ODiffusionCoefficient[i] = (-3410 * Gen_WF.diffusivity[i]) + 23.8;
+                     N2ODiffusionCoefficientbylayer[i] = (-3410 * Gen_WF.diffusivity[i]) + 23.8;
                 }
                 else
                 {
-                    N2ODiffusionCoefficient[i] = 0.0;
+                    N2ODiffusionCoefficientbylayer[i] = 0.0;
                 }
             }
         }
@@ -68,7 +70,7 @@ namespace Models.Functions
                 throw new Exception("Layer number must be provided to CERES Nitrification Model");
 
             double CO2Factor = Math.Max(0.16, Math.Exp(-0.8 * MathUtilities.Divide(NO3.kgha[arrayIndex], Nutrient.Catm[arrayIndex], 0)));
-            double N2N2ORatio = Math.Max(0, N2ODiffusionCoefficient[arrayIndex] * CO2Factor);
+            double N2N2ORatio = Math.Max(0, N2ODiffusionCoefficientbylayer[arrayIndex] * CO2Factor);
             double N2OFraction = 1 / (N2N2ORatio + 1);
 
             return N2OFraction;
