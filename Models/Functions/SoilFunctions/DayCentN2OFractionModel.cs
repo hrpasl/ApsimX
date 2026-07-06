@@ -19,8 +19,6 @@ namespace Models.Functions
     [PresenterName("UserInterface.Presenters.PropertyPresenter")]
     public class DayCentN2OFractionModel : Model, IFunction
     {
-        [Link]
-        IPhysical soilPhysical = null;
 
         /// <summary>The water balance model</summary>
         [Link]
@@ -32,8 +30,8 @@ namespace Models.Functions
         [Link]
         Nutrient Nutrient = null;
 
-        [Link]
-        CERESDenitrificationWaterFactor Gen_WF;
+        [Link]        
+        CERESDenitrificationWaterFactor Gen_WF = null; 
 
         /// <summary>Gas diffusivity in soil at field capacity.</summary>
         [Description("Gas diffusivity in soil at field capacity")]
@@ -42,14 +40,19 @@ namespace Models.Functions
 
         private void OnWaterChanged(object sender, EventArgs e)
         {
-        double[] SW = waterBalance.SW;
-        if (N2ODiffusionCoefficient == null)
-         N2ODiffusionCoefficient = new double[SW.Length];
+            double[] SW = waterBalance.SW;
+            
+        if (N2ODiffusionCoefficient == null||
+            N2ODiffusionCoefficient.Length != SW.Length)
+            {
+                N2ODiffusionCoefficient = new double[SW.Length];
+            }
+
             for (int i = 0; i < SW.Length; i++)
             {
-                if (Gen_WF.diffusivity<0.007)
+                if (Gen_WF.diffusivity[i]<0.007)
                 {
-                     N2ODiffusionCoefficient[i] = (-3410 * Gen_WF.diffusivity) + 23.8;
+                     N2ODiffusionCoefficient[i] = (-3410 * Gen_WF.diffusivity[i]) + 23.8;
                 }
                 else
                 {

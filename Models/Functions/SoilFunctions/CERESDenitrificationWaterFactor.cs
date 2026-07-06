@@ -26,7 +26,7 @@ namespace Models.Functions
 /// <summary>
 /// 
 /// </summary>
-         public double diffusivity {get;set;}
+         public double[] diffusivity {get;private set;}
 
         /// <summary>Gets the value.</summary>
         /// <value>The value.</value>
@@ -35,14 +35,18 @@ namespace Models.Functions
             if (arrayIndex == -1)
                 throw new Exception("Layer number must be provided to CERES Denitrification Water Factor Model");
 
-            double WF = MathUtilities.Divide(soilwater.SW[arrayIndex] - physical.DUL[arrayIndex], physical.SAT[arrayIndex] - physical.DUL[arrayIndex], 0.0);
+            
+            if (diffusivity == null || diffusivity.Length != soilwater.SW.Length)
+                 diffusivity = new double[soilwater.SW.Length];
+
 
             double sat = physical.SAT[arrayIndex];
             double afps = 1-soilwater.SW[arrayIndex]/sat;
             double cm = 1+sat*mediacomplexityfactor;
             double afpsOverSat = afps / sat;
-            diffusivity = Math.Pow(afps,cm)*afpsOverSat;
-            WF=-38.46*diffusivity+1;
+
+            diffusivity[arrayIndex] = Math.Pow(afps,cm)*afpsOverSat;
+            double WF=-38.46*diffusivity[arrayIndex]+1;
 
             return MathUtilities.Bound(WF, 0, 1);
         }
