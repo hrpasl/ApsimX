@@ -39,7 +39,7 @@ namespace Models.Functions
         [Description("Gas diffusivity in soil at field capacity")]
         public double[] N2ODiffusionCoefficientbylayer { get; set; }
 
-
+        [EventSubscribe("WaterChanged")]
         private void OnWaterChanged(object sender, EventArgs e)
         {
             double[] SW = waterBalance.SW;
@@ -52,7 +52,7 @@ namespace Models.Functions
 
             for (int i = 0; i < SW.Length; i++)
             {
-                if (Gen_WF.diffusivity[i]<0.007)
+                if (Gen_WF.Value(i)<0.007)
                 {
                      N2ODiffusionCoefficientbylayer[i] = (-3410 * Gen_WF.diffusivity[i]) + 23.8;
                 }
